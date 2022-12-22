@@ -3,6 +3,7 @@ import logging
 import requests
 from requests import cookies
 from typing import List
+import click
 
 
 class CalorieCounting(object):
@@ -70,13 +71,17 @@ class CalorieCounting(object):
         self.logging.info(f'Total of top three: {total_of_top_three}.')
 
 
-if __name__ == '__main__':
+@click.command()
+@click.option('--session', type=str, required=True, help="Session cookie required to download the input from AOC.")
+def calorie_counting(session):
+    """Solution for day 1 of AOC."""
     logging.basicConfig(level=logging.NOTSET, format="%(asctime)s: %(levelname)s: %(name)s: %(lineno)d: %(message)s",
                         datefmt="%Y-%m-%dT%H:%M:%S%z")
-    calorie_counter = CalorieCounting(logging.INFO, [
-        ('session',
-         ''),
-    ])
+    calorie_counter = CalorieCounting(logging.INFO, [('session', session), ])
     calorie_counter.download_input("https://adventofcode.com/2022/day/1/input")
     calorie_counter.calculate_max_of_all()
     calorie_counter.calculate_max_of_top_three()
+
+
+if __name__ == '__main__':
+    calorie_counting()
