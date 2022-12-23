@@ -1,8 +1,13 @@
+#!/usr/bin/env python3
+
 import logging
 import os
+import sys
 
 import click
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+# noinspection PyPep8
 from downloader import Downloader
 
 
