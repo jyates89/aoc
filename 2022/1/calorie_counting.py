@@ -6,7 +6,7 @@ from typing import Tuple
 
 import click
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from downloader import Downloader
 
 

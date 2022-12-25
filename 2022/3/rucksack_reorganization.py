@@ -7,7 +7,7 @@ from typing import List
 
 import click
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 # noinspection PyPep8
 from downloader import Downloader
 
@@ -21,19 +21,26 @@ class RuckSackOrganizer(object):
 
     LETTERS_IN_ALPHABET: int = 26
 
+    ELVES_PER_GROUP: int = 3
+
     def __init__(self):
         self._logger = logging.getLogger(RuckSackOrganizer.__name__)
         self._rucksacks: list[RuckSackOrganizer.RuckSack] = []
 
-    class Compartment(object):
-        pass
+        self._groups: list[
+            tuple[RuckSackOrganizer.RuckSack, ...]
+        ] = []
+
+        self._group_intersections: list[list[str]] = []
 
     class RuckSack(object):
-        def __init__(self, *, left_compartment: list[str], right_compartment: list[str]):
+        def __init__(self, *, rucksack_line: str):
             self._item_intersection: list[str] = []
 
-            self._left_compartment = left_compartment
-            self._right_compartment = right_compartment
+            self._rucksack_line = rucksack_line
+
+            self._left_compartment = list(rucksack_line[:int(len(rucksack_line) / 2)])
+            self._right_compartment = list(rucksack_line[int(len(rucksack_line) / 2):])
 
         def find_items_types_found_across_compartments(self) -> None:
             # Grab the intersection between the compartments:
@@ -41,29 +48,44 @@ class RuckSackOrganizer(object):
                 self._item_intersection.append(item)
 
         @property
-        def item_intersections(self):
+        def item_intersections(self) -> list[str]:
             return self._item_intersection
 
         @property
-        def left_compartment(self):
+        def rucksack_line(self) -> str:
+            return self._rucksack_line
+
+        @property
+        def left_compartment(self) -> list[str]:
             return self._left_compartment
 
         @property
-        def right_compartment(self):
+        def right_compartment(self) -> list[str]:
             return self._right_compartment
 
     def process_input_data(self, input_data: List[str]) -> None:
         self._logger.info(f"Processing {len(input_data)} line(s).")
         for line in input_data:
             rucksack_line: str = line.strip()
-            left_compartment = list(rucksack_line[:int(len(rucksack_line) / 2)])
-            right_compartment = list(rucksack_line[int(len(rucksack_line) / 2):])
 
-            rucksack = RuckSackOrganizer.RuckSack(left_compartment=left_compartment,
-                                                  right_compartment=right_compartment)
+            rucksack = RuckSackOrganizer.RuckSack(rucksack_line=rucksack_line)
             rucksack.find_items_types_found_across_compartments()
 
             self._rucksacks.append(rucksack)
+
+    def divide_rucksacks(self) -> None:
+        current_group: list[RuckSackOrganizer.RuckSack] = []
+        for rucksack in self._rucksacks:
+            current_group.append(rucksack)
+            if len(current_group) == RuckSackOrganizer.ELVES_PER_GROUP:
+                self._groups.append(tuple(current_group))
+                current_group = []
+
+    def find_intersections_across_groups(self) -> None:
+        for first, second, third in self._groups:
+            self._group_intersections.append(
+                list(set(first.rucksack_line) & set(second.rucksack_line) & set(third.rucksack_line))
+            )
 
     @staticmethod
     def get_item_priority(item: str) -> int:
@@ -84,6 +106,10 @@ class RuckSackOrganizer(object):
     @property
     def rucksacks(self):
         return self._rucksacks
+
+    @property
+    def group_intersections(self):
+        return self._group_intersections
 
 
 @click.command()
@@ -106,12 +132,20 @@ def main(session):
     solution = RuckSackOrganizer()
     solution.process_input_data(aoc_downloader.input_data)
 
-    sum_of_priorities = 0
+    sum_of_compartment_priorities = 0
     for rucksack in solution.rucksacks:
-        logger.info((''.join(rucksack.left_compartment), ''.join(rucksack.right_compartment)))
         for item in rucksack.item_intersections:
-            sum_of_priorities += solution.get_item_priority(item)
-    logger.info(f"Sum of priorities: {sum_of_priorities}.")
+            sum_of_compartment_priorities += solution.get_item_priority(item)
+    logger.info(f"Sum of priorities for compartments: {sum_of_compartment_priorities}.")
+
+    solution.divide_rucksacks()
+    solution.find_intersections_across_groups()
+
+    sum_of_group_priorities = 0
+    for group_intersection in solution.group_intersections:
+        for item in group_intersection:
+            sum_of_group_priorities += solution.get_item_priority(item)
+    logger.info(f"Sum of priorities for groups: {sum_of_group_priorities}.")
 
 
 if __name__ == '__main__':
