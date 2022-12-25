@@ -8,7 +8,7 @@ from typing import List
 
 import click
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 # noinspection PyPep8
 from downloader import Downloader
 
