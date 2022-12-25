@@ -3,7 +3,7 @@
 import logging
 import os
 import sys
-from enum import Enum
+from enum import IntEnum
 from typing import List
 
 import click
@@ -14,28 +14,50 @@ from downloader import Downloader
 
 
 class RockPaperScissors(object):
-    class Choice(Enum):
+    class Choice(IntEnum):
+        """
+        Represents the score for each shape choice.
+        """
         ROCK = 1
         PAPER = 2
         SCISSORS = 3
 
-    class ScoreType(Enum):
+    class Decision(IntEnum):
+        """
+        Represents the score for each decision.
+        """
         WIN = 6
-        TIE = 3
+        DRAW = 3
+        LOSE = 0
 
-    CHOICE_SCORE_MAPPING: dict = {
-        "A": Choice.ROCK.value,
-        "B": Choice.PAPER.value,
-        "C": Choice.SCISSORS.value,
-        "X": Choice.ROCK.value,
-        "Y": Choice.PAPER.value,
-        "Z": Choice.SCISSORS.value
+    CHOICE_MAPPING: dict[str, Choice] = {
+        "A": Choice.ROCK,
+        "B": Choice.PAPER,
+        "C": Choice.SCISSORS
+    }
+
+    DECISION_MAPPING: dict[str, Decision] = {
+        "X": Decision.LOSE,
+        "Y": Decision.DRAW,
+        "Z": Decision.WIN
+    }
+
+    WINNING_CONDITION_MAP: dict = {
+        Choice.ROCK: Choice.PAPER,
+        Choice.PAPER: Choice.SCISSORS,
+        Choice.SCISSORS: Choice.ROCK
+    }
+
+    LOSE_CONDITION_MAP: dict = {
+        Choice.ROCK: Choice.SCISSORS,
+        Choice.PAPER: Choice.ROCK,
+        Choice.SCISSORS: Choice.PAPER
     }
 
     def __init__(self):
         self._logger = logging.getLogger(RockPaperScissors.__name__)
 
-        self._mapped_choices: List[tuple[int, int]] = []
+        self._mapped_choices: List[tuple[RockPaperScissors.Choice, RockPaperScissors.Decision]] = []
         self._player_score: int = 0
 
     def process_input_data(self, input_data: List[str]) -> None:
@@ -43,30 +65,33 @@ class RockPaperScissors(object):
         for line in input_data:
             left, right = line.strip().split(" ")
             self._mapped_choices.append((
-                RockPaperScissors.CHOICE_SCORE_MAPPING.get(left),
-                RockPaperScissors.CHOICE_SCORE_MAPPING.get(right)
+                RockPaperScissors.CHOICE_MAPPING.get(left),
+                RockPaperScissors.DECISION_MAPPING.get(right)
             ))
 
     def calculate_scores(self) -> None:
+        win_rate, draw_rate, lose_rate = 0, 0, 0
         for choices in self._mapped_choices:
             opponent_choice, player_choice = choices
-            if opponent_choice == player_choice:
-                # There was a tie, so player gets the amount assigned to their shape, plus the value for a tie.
-                self._player_score += player_choice + RockPaperScissors.ScoreType.TIE.value
-            elif RockPaperScissors.Choice(opponent_choice) == RockPaperScissors.Choice.ROCK and \
-                    RockPaperScissors.Choice(player_choice) == RockPaperScissors.Choice.SCISSORS:
-                # Player loses, only getting the amount for the choice.
-                self._player_score += player_choice
-            elif RockPaperScissors.Choice(opponent_choice) == RockPaperScissors.Choice.SCISSORS and \
-                    RockPaperScissors.Choice(player_choice) == RockPaperScissors.Choice.ROCK:
-                # Player wins, getting the amount for the choice AND the win value.
-                self._player_score += player_choice + RockPaperScissors.ScoreType.WIN.value
+            if player_choice == RockPaperScissors.Decision.WIN:
+                win_rate += 1
+                # We chose to win, so we must add the win value plus whatever score is assigned to the shape that is
+                # required to beat the opponent.
+                self._player_score += RockPaperScissors.Decision.WIN.value \
+                    + RockPaperScissors.WINNING_CONDITION_MAP.get(opponent_choice).value
+            elif player_choice == RockPaperScissors.Decision.DRAW:
+                draw_rate += 1
+                # We chose to draw, so we add the draw score plus whatever score is assigned to the shape the opponent
+                # selected, since we too select that same shape.
+                self._player_score += RockPaperScissors.Decision.DRAW.value + opponent_choice.value
+            elif player_choice == RockPaperScissors.Decision.LOSE:
+                lose_rate += 1
+                # We chose to lose, so we only get the score assigned to the shape that loses to the opponent.
+                self._player_score += RockPaperScissors.LOSE_CONDITION_MAP.get(opponent_choice).value
             else:
-                # The rest of it can be simple to check, the player wins if they have the highest scoring shape.
-                if opponent_choice > player_choice:
-                    self._player_score += player_choice
-                else:
-                    self._player_score += player_choice + RockPaperScissors.ScoreType.WIN.value
+                # Sanity check the input.
+                raise RuntimeError("Unrecognized input.")
+        self._logger.info(f"Stats: win rate = {win_rate}, lose rate = {lose_rate}, draw rate = {draw_rate}.")
 
     @property
     def total_player_score(self):
