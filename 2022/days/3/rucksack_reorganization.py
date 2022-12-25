@@ -13,7 +13,6 @@ from downloader import Downloader
 
 
 class RuckSackOrganizer(object):
-
     LOWERCASE_DELIMITER: int = 96
     UPPERCASE_DELIMITER: int = 64
 
@@ -31,26 +30,19 @@ class RuckSackOrganizer(object):
 
     class RuckSack(object):
         def __init__(self, *, left_compartment: list[str], right_compartment: list[str]):
-            self._item_counts: dict[str, int] = {}
+            self._item_intersection: list[str] = []
 
             self._left_compartment = left_compartment
             self._right_compartment = right_compartment
 
         def find_items_types_found_across_compartments(self) -> None:
-            for item in self._left_compartment:
-                if item not in self._item_counts:
-                    self._item_counts[item] = 1
-                else:
-                    self._item_counts[item] += 1
-            for item in self._right_compartment:
-                if item not in self._item_counts:
-                    self._item_counts[item] = 1
-                else:
-                    self._item_counts[item] += 1
+            # Grab the intersection between the compartments:
+            for item in list(set(self._left_compartment) & set(self._right_compartment)):
+                self._item_intersection.append(item)
 
         @property
-        def item_counts(self):
-            return self._item_counts
+        def item_intersections(self):
+            return self._item_intersection
 
         @property
         def left_compartment(self):
@@ -59,7 +51,6 @@ class RuckSackOrganizer(object):
         @property
         def right_compartment(self):
             return self._right_compartment
-
 
     def process_input_data(self, input_data: List[str]) -> None:
         self._logger.info(f"Processing {len(input_data)} line(s).")
@@ -79,16 +70,16 @@ class RuckSackOrganizer(object):
         # Lowercase item types a through z have priorities 1 through 26.
         # Uppercase item types A through Z have priorities 27 through 52.
         utf_code = ord(item)
-        if RuckSackOrganizer.LOWERCASE_DELIMITER < utf_code < RuckSackOrganizer.LOWERCASE_DELIMITER + \
+        if RuckSackOrganizer.LOWERCASE_DELIMITER < utf_code <= RuckSackOrganizer.LOWERCASE_DELIMITER + \
                 RuckSackOrganizer.LETTERS_IN_ALPHABET:
-            # Lower case letter, subtract 96 to get priority.:
+            # Lower case letter, subtract 96 to get priority:
             return utf_code - RuckSackOrganizer.LOWERCASE_PRIORITY_DIFF
-        elif RuckSackOrganizer.UPPERCASE_DELIMITER < utf_code < RuckSackOrganizer.UPPERCASE_PRIORITY_DIFF + \
+        elif RuckSackOrganizer.UPPERCASE_DELIMITER < utf_code <= RuckSackOrganizer.UPPERCASE_DELIMITER + \
                 RuckSackOrganizer.LETTERS_IN_ALPHABET:
             # Upper case letter, subtract 38 to get the priority:
             return utf_code - RuckSackOrganizer.UPPERCASE_PRIORITY_DIFF
         else:
-            raise RuntimeError(f"Unrecognized item {item}!")
+            raise RuntimeError(f"Unrecognized item {item}, {ord(item)}!")
 
     @property
     def rucksacks(self):
@@ -115,10 +106,12 @@ def main(session):
     solution = RuckSackOrganizer()
     solution.process_input_data(aoc_downloader.input_data)
 
+    sum_of_priorities = 0
     for rucksack in solution.rucksacks:
-        logger.info((rucksack.left_compartment, str.join(rucksack.right_compartment)))
-        for item_stat in rucksack.item_counts.items():
-            logger.info(item_stat)
+        logger.info((''.join(rucksack.left_compartment), ''.join(rucksack.right_compartment)))
+        for item in rucksack.item_intersections:
+            sum_of_priorities += solution.get_item_priority(item)
+    logger.info(f"Sum of priorities: {sum_of_priorities}.")
 
 
 if __name__ == '__main__':
